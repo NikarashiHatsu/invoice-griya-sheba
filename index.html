@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="emerald">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice Griya Sheba</title>
+    <link rel="stylesheet" href="./build/app.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap" rel="stylesheet">
+    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/mask@3.x.x/dist/cdn.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="antialiased font-sans text-gray-700 p-4 font-light">
+    <div
+        class="max-w-screen-sm mx-auto w-full print:hidden"
+        x-data="{
+            step: 0,
+            next() {
+                this.step++;
+            },
+            previous() {
+                this.step--;
+            },
+        }"
+    >
+        <h2 class="text-3xl font-semibold mb-6">
+            Invoice Griya Sheba
+        </h2>
+
+        <ul class="steps w-full mb-6">
+            <li x-bind:class="step >= 0 ? 'step-primary' : ''" class="step">Data Penerima</li>
+            <li x-bind:class="step >= 1 ? 'step-primary' : ''" class="step">Data Invoice</li>
+            <li x-bind:class="step >= 2 ? 'step-primary' : ''" class="step">Data Item</li>
+            <li x-bind:class="step >= 3 ? 'step-primary' : ''" class="step">Review</li>
+        </ul>
+
+        <form
+            action="print.html"
+            method="get"
+            x-data="{
+                dateTimeFormatter: null,
+                formatter: null,
+                subtotal: 0,
+                penerima: {
+                    nama: '',
+                    nomorHp: '',
+                    alamat: '',
+                },
+                invoice: {
+                    nomor: '',
+                    tanggal: '',
+                    tenggatWaktu: '',
+                    items: [],
+                },
+                removeItem() {
+                    this.invoice.items.pop();
+                },
+                addItem() {
+                    this.invoice.items.push({
+                        namaItem: '',
+                        kuantitas: 0,
+                        hargaSatuan: 0,
+                        subtotal: 0,
+                    });
+                },
+                updateSubtotal(index) {
+                    let invoiceItem = this.invoice.items[index];
+                    let kuantitas = invoiceItem.kuantitas.replaceAll('.', '').replaceAll(',', '.');
+                    let hargaSatuan = invoiceItem.hargaSatuan.replaceAll('.', '').replaceAll(',', '.');
+
+                    invoiceItem.subtotal = this.formatter.format(kuantitas * hargaSatuan).replace('Rp', '').trim();
+                },
+                init() {
+                    this.invoice.items.push({
+                        namaItem: '',
+                        kuantitas: '',
+                        hargaSatuan: '',
+                        subtotal: '',
+                    });
+
+                    this.formatter = new Intl.NumberFormat('id-ID', {
+                        style: 'currency',
+                        currency: 'IDR',
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0,
+                    });
+
+                    this.dateTimeFormatter = new Intl.DateTimeFormat('id-ID', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                    });
+                }
+            }"
+        >
+            <div
+                id="dataPenerima"
+                x-show="step == 0"
+                x-transition
+                x-cloak
+            >
+                <div class="form-control mb-3">
+                    <label for="nama_penerima" class="label">
+                        <span class="label-text">
+                            Nama Penerima
+                            <span class="text-red-500">*</span>
+                        </span>
+                    </label>
+                    <input
+                        type="text"
+                        x-model="penerima.nama"
+                        name="nama_penerima"
+                        id="nama_penerima"
+                        class="input input-bordered w-full"
+                        required
+                    />
+                </div>
+
+                <div class="form-control mb-3">
+                    <label for="no_hp_penerima" class="label">
+                        <span class="label-text">
+                            Nomor HP Penerima
+                            <span class="text-red-500">*</span>
+                        </span>
+                    </label>
+                    <input
+                        type="text"
+                        x-model="penerima.nomorHp"
+                        name="no_hp_penerima"
+                        id="no_hp_penerima"
+                        class="input input-bordered w-full"
+                        x-mask="9999-9999-999999"
+                        required
+                    />
+                </div>
+
+                <div class="form-control mb-3">
+                    <label for="alamat_penerima" class="label">
+                        <span class="label-text">
+                            Alamat Penerima
+                            <span class="text-red-500">*</span>
+                        </span>
+                    </label>
+                    <textarea
+                        type="text"
+                        x-model="penerima.alamat"
+                        name="alamat_penerima"
+                        id="alamat_penerima"
+                        class="textarea textarea-bordered w-full"
+                        rows="3"
+                        required
+                    ></textarea>
+                </div>
+            </div>
+
+            <div
+                id="dataInvoice"
+                x-show="step == 1"
+                x-transition
+                x-cloak
+            >
+                <div class="form-control mb-3">
+                    <label for="nomor_invoice" class="label">
+                        <span class="label-text">
+                            Nomor Invoice
+                            <span class="text-red-500">*</span>
+                        </span>
+                    </label>
+                    <input
+                        type="text"
+                        x-model="invoice.nomor"
+                        name="nomor_invoice"
+                        id="nomor_invoice"
+                        class="input input-bordered w-full"
+                        required
+                    />
+                </div>
+
+                <div class="form-control mb-3">
+                    <label for="tanggal_invoice" class="label">
+                        <span class="label-text">
+                            Tanggal Invoice
+                            <span class="text-red-500">*</span>
+                        </span>
+                    </label>
+                    <input
+                        type="date"
+                        x-model="invoice.tanggal"
+                        name="tanggal_invoice"
+                        id="tanggal_invoice"
+                        class="input input-bordered w-full"
+                        required
+                    />
+                </div>
+
+                <div class="form-control mb-3">
+                    <label for="tenggat_waktu" class="label">
+                        <span class="label-text">
+                            Tenggat Waktu Pembayaran
+                            <span class="text-red-500">*</span>
+                        </span>
+                    </label>
+                    <input
+                        type="date"
+                        x-model="invoice.tenggatWaktu"
+                        name="tenggat_waktu"
+                        id="tenggat_waktu"
+                        class="input input-bordered w-full"
+                        required
+                    />
+                </div>
+            </div>
+
+            <div
+                id="dataItem"
+                x-show="step == 2"
+                x-transition
+                x-cloak
+            >
+                <template x-for="(inv, index) in invoice.items">
+                    <div class="my-4">
+                        <h3 class="text-xl font-light">
+                            Item #<span x-text="index + 1"></span>
+                        </h3>
+
+                        <div class="form-control mb-3">
+                            <label x-bind:for="`nama_item_${index + 1}`" class="label">
+                                <span class="label-text">
+                                    Nama Item
+                                    <span class="text-red-500">*</span>
+                                </span>
+                            </label>
+                            <input
+                                type="text"
+                                x-model="inv.namaItem"
+                                name="nama_item[]"
+                                x-bind:id="`nama_item_${index + 1}`"
+                                class="input input-bordered w-full"
+                                required
+                            />
+                        </div>
+
+                        <div class="form-control mb-3">
+                            <label x-bind:for="`kuantitas${index + 1}`" class="label">
+                                <span class="label-text">
+                                    Kuantitas
+                                    <span class="text-red-500">*</span>
+                                </span>
+                            </label>
+                            <input
+                                type="text"
+                                x-on:keyup="updateSubtotal(index)"
+                                x-model="inv.kuantitas"
+                                name="kuantitas[]"
+                                x-bind:id="`kuantitas${index + 1}`"
+                                class="input input-bordered w-full"
+                                x-mask:dynamic="$money($input, ',', '.')"
+                                required
+                            />
+                        </div>
+
+                        <div class="form-control mb-3">
+                            <label x-bind:for="`harga_satuan${index + 1}`" class="label">
+                                <span class="label-text">
+                                    Harga Satuan
+                                    <span class="text-red-500">*</span>
+                                </span>
+                            </label>
+                            <input
+                                type="text"
+                                x-on:keyup="updateSubtotal(index)"
+                                x-model="inv.hargaSatuan"
+                                name="harga_satuan[]"
+                                x-bind:id="`harga_satuan${index + 1}`"
+                                class="input input-bordered w-full"
+                                x-mask:dynamic="$money($input, ',', '.')"
+                                required
+                            />
+                        </div>
+
+                        <div class="form-control mb-3">
+                            <label x-bind:for="`subtotal${index + 1}`" class="label">
+                                <span class="label-text">
+                                    Subtotal
+                                    <span class="text-red-500">*</span>
+                                </span>
+                            </label>
+                            <input
+                                type="text"
+                                x-model="inv.subtotal"
+                                name="subtotal[]"
+                                x-bind:id="`subtotal${index + 1}`"
+                                class="input input-bordered w-full input-disabled"
+                                x-mask:dynamic="$money($input, ',', '.')"
+                                readonly
+                            />
+                        </div>
+                    </div>
+                </template>
+
+                <div class="flex justify-end mt-5">
+                    <button
+                        x-show="invoice.items.length > 1"
+                        type="button"
+                        class="btn btn-error btn-outline mr-3"
+                        x-on:click="removeItem"
+                    >
+                        Hapus
+                    </button>
+                    <button
+                        type="button"
+                        class="btn btn-primary btn-outline"
+                        x-on:click="addItem"
+                    >
+                        Tambah
+                    </button>
+                </div>
+            </div>
+
+            <div
+                id="review"
+                x-show="step == 3"
+                x-transition
+                x-cloak
+            >
+                <div class="mb-6">
+                    <h4 class="text-lg font-semibold mb-2">
+                        Data Penerima
+                    </h4>
+                    <table cellpadding="4">
+                        <tbody>
+                            <tr>
+                                <td class="w-24 align-top">Penerima</td>
+                                <td class="align-top">:</td>
+                                <td x-text="penerima.nama"></td>
+                            </tr>
+                            <tr>
+                                <td class="align-top">Nomor HP</td>
+                                <td class="align-top">:</td>
+                                <td x-text="penerima.nomorHp"></td>
+                            </tr>
+                            <tr>
+                                <td class="align-top">Alamat</td>
+                                <td class="align-top">:</td>
+                                <td x-text="penerima.alamat"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mb-6">
+                    <h4 class="text-lg font-semibold mb-2">
+                        Data Invoice
+                    </h4>
+                    <table cellpadding="4">
+                        <tbody>
+                            <tr>
+                                <td class="w-56 align-top">Nomor Invoice</td>
+                                <td class="align-top">:</td>
+                                <td x-text="invoice.nomor"></td>
+                            </tr>
+                            <tr>
+                                <td class="align-top">Tanggal Invoice</td>
+                                <td class="align-top">:</td>
+                                <td x-text="invoice.tanggal != '' ? dateTimeFormatter.format(new Date(invoice.tanggal)) : ''"></td>
+                            </tr>
+                            <tr>
+                                <td class="align-top">Tenggat Waktu Pembayaran</td>
+                                <td class="align-top">:</td>
+                                <td x-text="invoice.tenggatWaktu != '' ? dateTimeFormatter.format(new Date(invoice.tenggatWaktu)) : ''"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mb-6">
+                    <h4 class="text-lg font-semibold mb-2">
+                        Data Item
+                    </h4>
+                    <table class="table table-sm">
+                        <thead>
+                            <tr class="*:border bg-gray-100">
+                                <th>No</th>
+                                <th>Item</th>
+                                <th>Qty.</th>
+                                <th>Harga Satuan</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="(inv, index) in invoice.items">
+                                <tr class="*:border bg-transparent">
+                                    <td x-text="index + 1"></td>
+                                    <td x-text="inv.namaItem"></td>
+                                    <td x-text="inv.kuantitas"></td>
+                                    <td x-text="inv.hargaSatuan"></td>
+                                    <td x-text="inv.subtotal"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </form>
+
+        <div class="flex justify-end mt-6">
+            <button
+                x-on:click="previous"
+                class="btn mr-4"
+                x-show="step > 0"
+                x-transition
+                x-cloak
+            >
+                <svg class="size-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><rect width="256" height="256" fill="none"/><line x1="216" y1="128" x2="40" y2="128" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><polyline points="112 56 40 128 112 200" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/></svg>
+                <span>
+                    Sebelumnya
+                </span>
+            </button>
+            <button
+                x-on:click="next"
+                class="btn"
+                x-show="step < 3"
+                x-transition
+                x-cloak
+            >
+                <span>
+                    Selanjutnya
+                </span>
+                <svg class="size-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><rect width="256" height="256" fill="none"/><line x1="40" y1="128" x2="216" y2="128" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><polyline points="144 56 216 128 144 200" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/></svg>
+            </button>
+            <button
+                x-on:click="print"
+                class="btn btn-primary"
+                x-show="step == 3"
+                x-transition
+                x-cloak
+            >
+                <span>
+                    Cetak
+                </span>
+                <svg class="size-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><rect width="256" height="256" fill="none"/><polyline points="64 80 64 40 192 40 192 80" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><rect x="64" y="152" width="128" height="64" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><path d="M64,176H24V96c0-8.84,7.76-16,17.33-16H214.67C224.24,80,232,87.16,232,96v80H192" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><circle cx="188" cy="116" r="12"/></svg>
+            </button>
+        </div>
+    </div>
+</body>
+</html>
