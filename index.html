@@ -11,19 +11,136 @@
     <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/mask@3.x.x/dist/cdn.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
-<body class="antialiased font-sans text-gray-700 p-4 font-light">
-    <div
-        class="max-w-screen-sm mx-auto w-full print:hidden"
-        x-data="{
-            step: 0,
-            next() {
-                this.step++;
-            },
-            previous() {
-                this.step--;
-            },
-        }"
-    >
+<body
+    class="antialiased font-sans text-gray-700 p-4 font-light min-h-screen"
+    x-data="{
+        step: 0,
+        next() {
+            this.step++;
+        },
+        previous() {
+            this.step--;
+        },
+        dateTimeFormatter: null,
+        formatter: null,
+        total: 0,
+        totalShort: '',
+        totalTerbilang: '',
+        penerima: {
+            nama: '',
+            nomorHp: '',
+            alamat: '',
+        },
+        invoice: {
+            nomor: '',
+            tanggal: '',
+            tenggatWaktu: '',
+            items: [],
+        },
+        removeItem() {
+            this.invoice.items.pop();
+        },
+        addItem() {
+            this.invoice.items.push({
+                namaItem: '',
+                kuantitas: 0,
+                hargaSatuan: 0,
+                subtotal: 0,
+                shortHargaSatuan: '',
+                shortSubtotal: '',
+            });
+        },
+        updateSubtotal(index) {
+            let invoiceItem = this.invoice.items[index];
+            let kuantitas = invoiceItem.kuantitas.replaceAll('.', '').replaceAll(',', '.');
+            let hargaSatuan = invoiceItem.hargaSatuan.replaceAll('.', '').replaceAll(',', '.');
+            let subtotal = this.formatter.format(kuantitas * hargaSatuan).replace('Rp', '').trim();
+
+            invoiceItem.subtotal = subtotal;
+            invoiceItem.shortHargaSatuan = this.shortenNumber(hargaSatuan);
+            invoiceItem.shortSubtotal = this.shortenNumber(subtotal.replaceAll('.', '').replaceAll(',', '.'));
+
+            this.updateTotal();
+        },
+        updateTotal() {
+            let total = this.invoice.items.map((inv) => {
+                return parseFloat(inv.subtotal.replaceAll('.', '').replaceAll(',', '.'));
+            }).reduce((a, b) => a + b);
+
+            this.total = this.formatter.format(total).replace('Rp', '').trim();
+            this.totalShort = this.shortenNumber(this.total.replaceAll('.', '').replaceAll(',', '.'));
+            this.totalTerbilang = this.terbilang(this.total.replaceAll('.', '').replaceAll(',', '.'));
+        },
+        shortenNumber(num) {
+            if (num >= 1000000) {
+                return (num / 1000000).toFixed(1).replace('.0', '') + 'jt';
+            } else if (num >= 1000) {
+                return (num / 1000).toFixed(1).replace('.0', '') + 'rb';
+            } else {
+                return this.formatter.format(num).replace('Rp', '').trim()
+            }
+        },
+        terbilang(num) {
+            const angka = ['', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan', 'sepuluh', 'sebelas'];
+
+            let terbilang = '';
+
+            function toWords(num) {
+                if (num < 12) {
+                    return angka[num];
+                } else if (num < 20) {
+                    return toWords(num - 10) + ' belas';
+                } else if (num < 100) {
+                    return toWords(Math.floor(num / 10)) + ' puluh ' + toWords(num % 10);
+                } else if (num < 200) {
+                    return 'seratus ' + toWords(num - 100);
+                } else if (num < 1000) {
+                    return toWords(Math.floor(num / 100)) + ' ratus ' + toWords(num % 100);
+                } else if (num < 2000) {
+                    return 'seribu ' + toWords(num - 1000);
+                } else if (num < 1000000) {
+                    return toWords(Math.floor(num / 1000)) + ' ribu ' + toWords(num % 1000);
+                } else if (num < 1000000000) {
+                    return toWords(Math.floor(num / 1000000)) + ' juta ' + toWords(num % 1000000);
+                } else if (num < 1000000000000) {
+                    return toWords(Math.floor(num / 1000000000)) + ' miliar ' + toWords(num % 1000000000);
+                } else if (num < 1000000000000000) {
+                    return toWords(Math.floor(num / 1000000000000)) + ' triliun ' + toWords(num % 1000000000000);
+                } else {
+                    return 'Angka terlalu besar';
+                }
+            }
+
+            if (num === 0) {
+                return 'Nol';
+            }
+
+            return this.ucwords(toWords(num).replace(/\s+/g, ' ').trim());
+        },
+        ucwords(str) {
+            return str.toLowerCase().replace(/\b[a-z]/g, function(letter) {
+                return letter.toUpperCase();
+            });
+        },
+        init() {
+            this.addItem();
+
+            this.formatter = new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+            });
+
+            this.dateTimeFormatter = new Intl.DateTimeFormat('id-ID', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+            });
+        }
+    }"
+>
+    <div class="max-w-screen-sm mx-auto w-full print:hidden">
         <h2 class="text-3xl font-semibold mb-6">
             Invoice Griya Sheba
         </h2>
@@ -35,65 +152,7 @@
             <li x-bind:class="step >= 3 ? 'step-primary' : ''" class="step">Review</li>
         </ul>
 
-        <form
-            action="print.html"
-            method="get"
-            x-data="{
-                dateTimeFormatter: null,
-                formatter: null,
-                subtotal: 0,
-                penerima: {
-                    nama: '',
-                    nomorHp: '',
-                    alamat: '',
-                },
-                invoice: {
-                    nomor: '',
-                    tanggal: '',
-                    tenggatWaktu: '',
-                    items: [],
-                },
-                removeItem() {
-                    this.invoice.items.pop();
-                },
-                addItem() {
-                    this.invoice.items.push({
-                        namaItem: '',
-                        kuantitas: 0,
-                        hargaSatuan: 0,
-                        subtotal: 0,
-                    });
-                },
-                updateSubtotal(index) {
-                    let invoiceItem = this.invoice.items[index];
-                    let kuantitas = invoiceItem.kuantitas.replaceAll('.', '').replaceAll(',', '.');
-                    let hargaSatuan = invoiceItem.hargaSatuan.replaceAll('.', '').replaceAll(',', '.');
-
-                    invoiceItem.subtotal = this.formatter.format(kuantitas * hargaSatuan).replace('Rp', '').trim();
-                },
-                init() {
-                    this.invoice.items.push({
-                        namaItem: '',
-                        kuantitas: '',
-                        hargaSatuan: '',
-                        subtotal: '',
-                    });
-
-                    this.formatter = new Intl.NumberFormat('id-ID', {
-                        style: 'currency',
-                        currency: 'IDR',
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 0,
-                    });
-
-                    this.dateTimeFormatter = new Intl.DateTimeFormat('id-ID', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric',
-                    });
-                }
-            }"
-        >
+        <form method="get">
             <div
                 id="dataPenerima"
                 x-show="step == 0"
@@ -306,14 +365,15 @@
                         class="btn btn-error btn-outline mr-3"
                         x-on:click="removeItem"
                     >
-                        Hapus
+                        Hapus Item Terakhir
                     </button>
                     <button
+                        x-show="invoice.items.length < 7"
                         type="button"
                         class="btn btn-primary btn-outline"
                         x-on:click="addItem"
                     >
-                        Tambah
+                        Tambah (<span x-text="invoice.items.length"></span> / 7 )
                     </button>
                 </div>
             </div>
@@ -443,5 +503,161 @@
             </button>
         </div>
     </div>
+
+    <div class="hidden print:block h-full">
+        <div class="w-full flex flex-col justify-between h-full">
+            <!-- HEADER -->
+            <div class="flex flex-col mb-8">
+                <div class="flex items-start justify-between mb-8">
+                    <img src="./assets/logo.jpg" class="size-24 grayscale">
+
+                    <h1 class="text-4xl">
+                        INVOICE
+                    </h1>
+                </div>
+
+                <div class="flex items-start justify-between">
+                    <div class="flex flex-col">
+                        <h6 class="text-lg font-semibold">
+                            Kepada Yth.
+                        </h6>
+
+                        <p x-text="penerima.nama"></p>
+
+                        <p x-text="penerima.nomorHp"></p>
+
+                        <p x-html="penerima.alamat.replace(/(?:\r\n|\r|\n)/g, '<br>');"></p>
+                    </div>
+
+                    <div class="flex flex-col">
+                        <p>
+                            Nomor Invoice #<span x-text="invoice.nomor"></span>
+                        </p>
+
+                        <p x-text="invoice.tanggal != '' ? dateTimeFormatter.format(new Date(invoice.tanggal)) : ''"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BODY -->
+            <table cellpadding="4" class="mb-6">
+                <thead>
+                    <tr class="border-y border-y-gray-600 *:text-left">
+                        <th>Item</th>
+                        <th class="w-24">Qty.</th>
+                        <th class="w-44">Harga Satuan</th>
+                        <th class="w-24">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="i in invoice.items.length < 5 ? 5 : invoice.items.length">
+                        <tr class="border-y border-y-gray-400 *:text-left">
+                            <td x-html="invoice.items[i - 1]?.namaItem ?? '&nbsp;'"></td>
+                            <td x-html="invoice.items[i - 1]?.kuantitas ?? '&nbsp;'"></td>
+                            <td x-html="invoice.items[i - 1]?.shortHargaSatuan ?? '&nbsp;'"></td>
+                            <td x-html="invoice.items[i - 1]?.shortSubtotal ?? '&nbsp;'"></td>
+                        </tr>
+                    </template>
+                </tbody>
+                <tfoot>
+                    <tr class="border-y border-y-gray-600 *:text-left">
+                        <th></th>
+                        <th></th>
+                        <th>Subtotal</th>
+                        <th class="text-right" x-text="totalShort"></th>
+                    </tr>
+                </tfoot>
+            </table>
+
+            <div class="flex flex-col items-start mb-6">
+                <p>
+                    Terbilang:
+                </p>
+
+                <p x-text="totalTerbilang"></p>
+            </div>
+
+            <div class="flex flex-col items-start mb-8">
+                <img src="./assets/signature.png" class="h-16 object-contain">
+
+                <p>
+                    Eba Sheba
+                </p>
+
+                <p>
+                    Makeup Dept.
+                </p>
+            </div>
+
+            <!-- FOOTER -->
+            <div class="flex items-end justify-between border-b-2 border-b-gray-400 pb-2 mb-2">
+                <div class="flex flex-col">
+                    <h5 class="font-semibold text-lg">
+                        Informasi Pembayaran
+                    </h5>
+
+                    <p>
+                        Bank BCA
+                    </p>
+
+                    <p>
+                        Nomor Rekening: 374 0525114
+                    </p>
+
+                    <p>
+                        Atas Nama: Eba Sheba
+                    </p>
+
+                    <p x-text="invoice.tenggatWaktu != '' ? dateTimeFormatter.format(new Date(invoice.tenggatWaktu)) : ''"></p>
+                </div>
+
+                <div class="flex flex-col">
+                    <h4 class="font-semibold text-xl">
+                        Griya Sheba
+                    </h4>
+
+                    <p>
+                        Jl. Sawojajar 5 Blok D31 No. 36 Rt. 04/17
+                    </p>
+
+                    <p>
+                        Teluk Pucung, Kec. Bekasi Utara
+                    </p>
+
+                    <p>
+                        Kota Bekasi, Jawa Barat, 17121
+                    </p>
+                </div>
+            </div>
+
+            <!-- SUBFOOTER -->
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <svg class="size-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><rect width="256" height="256" fill="none"/><path d="M164.39,145.34a8,8,0,0,1,7.59-.69l47.16,21.13a8,8,0,0,1,4.8,8.3A48.33,48.33,0,0,1,176,216,136,136,0,0,1,40,80,48.33,48.33,0,0,1,81.92,32.06a8,8,0,0,1,8.3,4.8l21.13,47.2a8,8,0,0,1-.66,7.53L89.32,117a7.93,7.93,0,0,0-.54,7.81c8.27,16.93,25.77,34.22,42.75,42.41a7.92,7.92,0,0,0,7.83-.59Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/></svg>
+                    <span class="ml-1">
+                        0815-1316-7557
+                    </span>
+                </div>
+
+                <div class="flex items-center">
+                    <svg class="size-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><rect width="256" height="256" fill="none"/><polyline points="224 56 128 144 32 56" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><path d="M32,56H224a0,0,0,0,1,0,0V192a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V56A0,0,0,0,1,32,56Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><line x1="110.55" y1="128" x2="34.47" y2="197.74" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><line x1="221.53" y1="197.74" x2="145.45" y2="128" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/></svg>
+                    <span class="ml-1">
+                        griyashebaofficial@gmail.com
+                    </span>
+                </div>
+
+                <div class="flex items-center">
+                    <svg class="size-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><rect width="256" height="256" fill="none"/><circle cx="128" cy="128" r="40" fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="16"/><rect x="32" y="32" width="192" height="192" rx="48" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><circle cx="180" cy="76" r="12"/></svg>
+                    <span class="ml-1">
+                        @ebasheba
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.print();
+    </script>
 </body>
 </html>
